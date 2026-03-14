@@ -201,3 +201,92 @@ async def identify(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ── Animate endpoint ──────────────────────────────────────────────────────────
+class AnimateResponse(BaseModel):
+    frames: list[str]   # list of SVG strings (3–4 frames)
+
+
+ANIMATE_PROMPT = """You are an SVG animation artist. You will be given a hand-drawn sketch of an object.
+
+Your task: create 4 SVG animation frames that show this object in motion, matching the rough style and proportions of the sketch as closely as possible.
+
+Object label: {label}
+Object preset: {preset}
+
+Animation guidelines by object type:
+- person / stickman: walking cycle — arms and legs in 4 alternating positions
+- bird: wing flap cycle — wings up / mid-down / fully down / mid-up
+- car / vehicle: subtle body bounce + slight wheel rotation offset each frame
+- airplane / helicopter / ufo / rocket: slight pitch/tilt oscillation each frame
+- fish / shark / whale / dolphin: tail wag side to side across 4 frames
+- ball: squash on frame 2, stretch on frame 4, neutral on 1 and 3
+- cloud: slow drift — shift 3–5px right each frame
+- default: gentle bob up/down by 3–5px across 4 frames
+
+Rules:
+1. Output ONLY valid JSON with this exact shape: {{"frames": ["<svg>...</svg>", "<svg>...</svg>", "<svg>...</svg>", "<svg>...</svg>"]}}
+2. Each SVG must have viewBox="0 0 200 200" width="200" height="200"
+3. Use simple strokes and fills that match the hand-drawn style (roughness, sketch lines)
+4. Keep the object centred in the viewBox
+5. Do NOT include any explanation or markdown — pure JSON only"""
+
+
+@app.post("/animate", response_model=AnimateResponse)
+async def animate(
+    file: UploadFile = File(...),
+    label: str = "object",
+    preset: str = "unknown",
+    x_gemini_key: str | None = Header(default=None),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    api_key = x_gemini_key or GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No Gemini API key provided.")
+    request_client = genai.Client(api_key=api_key)
+
+    image_bytes = await file.read()
+
+    try:
+        Image.open(BytesIO(image_bytes)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file")
+
+    prompt = ANIMATE_PROMPT.format(label=label, preset=preset)
+
+    try:
+        response = request_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_text(text=prompt),
+                types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+            ],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
+
+    raw = response.text.strip() if response.text else ""
+
+    # Extract the JSON object (handles markdown fences)
+    json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not json_match:
+        raise HTTPException(status_code=502, detail=f"Unexpected AI response: {raw[:300]}")
+
+    try:
+        data = json.loads(json_match.group())
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=502, detail=f"Failed to parse AI response: {raw[:300]}")
+
+    frames = data.get("frames", [])
+    if not isinstance(frames, list) or len(frames) == 0:
+        raise HTTPException(status_code=502, detail="AI returned no animation frames")
+
+    # Sanitise: keep only frames that look like SVG
+    svg_frames = [f for f in frames if isinstance(f, str) and "<svg" in f]
+    if not svg_frames:
+        raise HTTPException(status_code=502, detail="AI returned no valid SVG frames")
+
+    return AnimateResponse(frames=svg_frames)

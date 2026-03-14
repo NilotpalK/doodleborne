@@ -6,6 +6,7 @@ interface InteractiveCanvasProps {
   sketchSvg: SVGSVGElement;
   preset: string;
   exhaustSide: string;  // 'left'|'right'|'top'|'bottom'|'none'
+  animationFrames?: SVGSVGElement[];
   onExit: () => void;
 }
 
@@ -271,14 +272,17 @@ function ControlsCard({ isFloating }: { isFloating: boolean }) {
   );
 }
 
-export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: InteractiveCanvasProps) {
-  const canvasRef      = useRef<HTMLCanvasElement>(null);
-  const sketchImageRef = useRef<{ img: HTMLImageElement; w: number; h: number } | null>(null);
-  const worldType      = getWorldType(preset);
-  const cfg            = getPresetConfig(preset);
-  const isFloating     = !cfg.hasGround || worldType === 'underwater';
+export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, animationFrames, onExit }: InteractiveCanvasProps) {
+  const canvasRef        = useRef<HTMLCanvasElement>(null);
+  const sketchImageRef   = useRef<{ img: HTMLImageElement; w: number; h: number } | null>(null);
+  // Per-frame image cache: populated when animationFrames prop arrives
+  const frameImagesRef   = useRef<Array<{ img: HTMLImageElement; w: number; h: number }>>([]);
+  const frameIndexRef    = useRef<number>(0);
+  const worldType        = getWorldType(preset);
+  const cfg              = getPresetConfig(preset);
+  const isFloating       = !cfg.hasGround || worldType === 'underwater';
 
-  // SVG → Image (preserves aspect ratio)
+  // SVG → Image (preserves aspect ratio) — single fallback frame
   useEffect(() => {
     const { w: natW, h: natH } = getSvgDimensions(sketchSvg);
     const { w: drawW, h: drawH } = fitToBox(natW, natH);
@@ -291,6 +295,46 @@ export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: In
     img.onload = () => { sketchImageRef.current = { img, w: drawW, h: drawH }; URL.revokeObjectURL(url); };
     img.src = url;
   }, [sketchSvg]);
+
+  // Convert animation frame SVGs → Images when the prop arrives
+  useEffect(() => {
+    if (!animationFrames || animationFrames.length === 0) return;
+    frameImagesRef.current = [];  // reset while loading
+    const loaded: Array<{ img: HTMLImageElement; w: number; h: number }> = [];
+    let remaining = animationFrames.length;
+
+    animationFrames.forEach((frameSvg, i) => {
+      const { w: natW, h: natH } = getSvgDimensions(frameSvg);
+      const { w: drawW, h: drawH } = fitToBox(natW, natH);
+      const serializer = new XMLSerializer();
+      let svgStr = serializer.serializeToString(frameSvg);
+      if (!svgStr.includes('xmlns=')) svgStr = svgStr.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+      const url  = URL.createObjectURL(blob);
+      const img  = new Image();
+      img.onload = () => {
+        loaded[i] = { img, w: drawW, h: drawH };
+        URL.revokeObjectURL(url);
+        remaining--;
+        if (remaining === 0) {
+          frameImagesRef.current = loaded;
+          frameIndexRef.current  = 0;
+        }
+      };
+      img.src = url;
+    });
+  }, [animationFrames]);
+
+  // Frame ticker — advances frame index at ~8 fps
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const frames = frameImagesRef.current;
+      if (frames.length > 1) {
+        frameIndexRef.current = (frameIndexRef.current + 1) % frames.length;
+      }
+    }, 120);
+    return () => clearInterval(interval);
+  }, []);
 
   // Keys
   useEffect(() => {
@@ -443,9 +487,12 @@ export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: In
       // Particles
       emitParticles(x + offsetX, y, vx, vy);
 
-      // Sketch
+      // Sketch — use animated frame if available, else the static SVG
+      const frames = frameImagesRef.current;
+      const sketch = frames.length > 0
+        ? frames[frameIndexRef.current % frames.length]
+        : sketchImageRef.current;
       ctx.save(); ctx.translate(x + offsetX, y); ctx.rotate(angle);
-      const sketch = sketchImageRef.current;
       if (sketch) {
         ctx.drawImage(sketch.img, -sketch.w / 2, -sketch.h / 2, sketch.w, sketch.h);
       } else {
