@@ -1,0 +1,176 @@
+/* ===========================
+   App Layout
+   =========================== */
+
+.app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===========================
+   Interactive Canvas
+   =========================== */
+
+.interactive-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #fdf9f0;
+}
+
+
+/* ===========================
+   Drawing Phase
+   =========================== */
+
+.drawing-phase {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.excalidraw-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.excalidraw-wrapper .excalidraw {
+  height: 100%;
+}
+
+/* ===========================
+   Bring to Life Button (floating)
+   =========================== */
+
+.bring-to-life-bar {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.bring-to-life-btn {
+  font-family: 'Virgil', 'Comic Sans MS', cursive;
+  font-size: 0.95rem;
+  background: #fdf9f0;
+  color: #1a1a1a;
+  border: 2px solid #1a1a1a;
+  border-radius: 7px;
+  padding: 7px 22px;
+  cursor: pointer;
+  pointer-events: all;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  box-shadow: 2px 2px 0 #1a1a1a;
+  letter-spacing: 0.02em;
+}
+
+.bring-to-life-btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a1a;
+}
+
+.bring-to-life-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #1a1a1a;
+}
+
+.bring-to-life-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   Loading Screen (placeholder)
+   =========================== */
+
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #fdf9f0;
+}
+
+.loading-text {
+  font-family: 'Virgil', 'Comic Sans MS', cursive;
+  font-size: 1.5rem;
+  color: #1a1a1a;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ===========================
+   Result Screen (M2 interim)
+   =========================== */
+
+.result-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #fdf9f0;
+}
+
+.result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 56px;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 5px 5px 0 #1a1a1a;
+  background: #fff;
+  font-family: 'Virgil', 'Comic Sans MS', cursive;
+  text-align: center;
+}
+
+.result-label {
+  font-size: 1rem;
+  color: #666;
+}
+
+.result-object {
+  font-size: 2.4rem;
+  font-weight: normal;
+  color: #1a1a1a;
+  text-transform: capitalize;
+}
+
+.result-meta {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* ===========================
+   Error
+   =========================== */
+
+.error-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff0f0;
+  border: 2px solid #c00;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-family: 'Virgil', 'Comic Sans MS', cursive;
+  font-size: 0.9rem;
+  color: #c00;
+  z-index: 100;
+}
