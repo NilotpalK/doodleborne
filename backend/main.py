@@ -14,11 +14,7 @@ from PIL import Image
 load_dotenv()
 
 # ── Gemini setup ─────────────────────────────────────────────────────────────
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is not set in .env")
-
-client = genai.Client(api_key=GEMINI_API_KEY)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")  # optional — visitors can bring their own key
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Doodleborne API")
