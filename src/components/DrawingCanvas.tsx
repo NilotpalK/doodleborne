@@ -1,15 +1,18 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import '@excalidraw/excalidraw/index.css';
 import { Excalidraw, exportToBlob, exportToSvg } from '@excalidraw/excalidraw';
+import { ApiKeyModal } from './ApiKeyModal';
 
 interface DrawingCanvasProps {
   onBringToLife: (png: Blob, svg: SVGSVGElement) => void;
   isLoading: boolean;
+  apiKey: string;
+  onSaveKey: (key: string) => void;
 }
 
-export function DrawingCanvas({ onBringToLife, isLoading }: DrawingCanvasProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function DrawingCanvas({ onBringToLife, isLoading, apiKey, onSaveKey }: DrawingCanvasProps) {
   const excalidrawApiRef = useRef<any>(null);
+  const [showModal, setShowModal] = useState(false);
 
   const handleBringToLife = useCallback(async () => {
     const api = excalidrawApiRef.current;
@@ -52,6 +55,14 @@ export function DrawingCanvas({ onBringToLife, isLoading }: DrawingCanvasProps) 
 
       <div className="bring-to-life-bar">
         <button
+          className={`api-key-btn ${apiKey ? 'has-key' : ''}`}
+          onClick={() => setShowModal(true)}
+          title={apiKey ? 'API key saved ✓' : 'Set Gemini API key'}
+        >
+          🔑 {apiKey ? 'API Key ✓' : 'API Key'}
+        </button>
+
+        <button
           className="bring-to-life-btn"
           onClick={handleBringToLife}
           disabled={isLoading}
@@ -59,6 +70,14 @@ export function DrawingCanvas({ onBringToLife, isLoading }: DrawingCanvasProps) 
           {isLoading ? '✏️ Thinking...' : '✨ Bring to Life'}
         </button>
       </div>
+
+      {showModal && (
+        <ApiKeyModal
+          currentKey={apiKey}
+          onSave={onSaveKey}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 }

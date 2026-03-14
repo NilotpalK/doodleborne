@@ -198,15 +198,21 @@ function drawSpaceWorld(rc: RC, ctx: CanvasRenderingContext2D, W: number, H: num
   }
   rc.circle(W * 0.82, H * 0.12, 60, { roughness: 1.5, strokeWidth: 2, stroke: 'rgba(210,205,180,0.6)', fill: 'rgba(230,225,200,0.18)', seed: 99 });
 }
-function drawOceanWorld(rc: RC, ctx: CanvasRenderingContext2D, W: number, H: number, groundY: number, cameraX: number, t: number) {
+function drawOceanWorldBg(rc: RC, ctx: CanvasRenderingContext2D, W: number, H: number, groundY: number, cameraX: number) {
+  // Sky half
   const g = ctx.createLinearGradient(0, 0, 0, groundY);
   g.addColorStop(0, '#b0d4e8'); g.addColorStop(1, '#d4ecf5');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, groundY);
+  // Water base colour (no waves yet — goes under the boat)
   ctx.fillStyle = '#6ab8d4'; ctx.fillRect(0, groundY, W, H - groundY);
+  // Clouds
   const clx = cameraX * 0.2; const CSP = 560;
   for (let i = Math.floor((clx - W * 0.6) / CSP) - 1; i <= Math.ceil((clx + W * 1.2) / CSP) + 1; i++) {
     const s = Math.abs(i * 3761) % 997 + 1; drawCloud(rc, i * CSP - clx + W / 2, groundY * (0.2 + sv(s) * 0.5), 40 + sv(s + 2) * 25, s, 0.75);
   }
+}
+function drawOceanWorldFg(rc: RC, ctx: CanvasRenderingContext2D, W: number, groundY: number, cameraX: number, t: number) {
+  // Animated wave overlay — drawn ON TOP of the boat so hull looks submerged
   drawWave(rc, ctx, W, groundY, cameraX, t);
   rc.line(-500, groundY, W + 500, groundY, { roughness: 1.5, strokeWidth: 2, stroke: 'rgba(60,130,170,0.6)', seed: 55 });
 }
@@ -399,11 +405,11 @@ export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: In
       cameraX = lerp(cameraX, x + Math.sign(vx) * LOOK_AHEAD, LERP);
       const offsetX = W / 2 - cameraX;
 
-      // World
+      // World background
       if (worldType === 'ground')     drawGroundWorld(rc, ctx, W, H, groundY, cameraX);
       else if (worldType === 'sky')   drawSkyWorld(rc, ctx, W, H, cameraX);
       else if (worldType === 'space') drawSpaceWorld(rc, ctx, W, H, cameraX);
-      else if (worldType === 'ocean') drawOceanWorld(rc, ctx, W, H, groundY, cameraX, t);
+      else if (worldType === 'ocean') drawOceanWorldBg(rc, ctx, W, H, groundY, cameraX);
       else                            drawUnderwaterWorld(rc, ctx, W, H, cameraX);
 
       // Particles
@@ -418,6 +424,9 @@ export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: In
         rc.rectangle(-80, -55, 160, 110, { roughness: 1.5, strokeWidth: 2, stroke: '#1a1a1a', seed: 1 });
       }
       ctx.restore();
+
+      // Ocean water overlay — drawn AFTER the boat so hull looks submerged
+      if (worldType === 'ocean') drawOceanWorldFg(rc, ctx, W, groundY, cameraX, t);
 
       updateAndDrawParticles();
 

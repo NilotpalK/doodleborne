@@ -3,7 +3,7 @@ import re
 import json
 from io import BytesIO
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -131,9 +131,18 @@ def resolve_preset(obj_label: str, ai_category: str) -> tuple[str | None, str]:
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 @app.post("/identify", response_model=IdentifyResponse)
-async def identify(file: UploadFile = File(...)):
+async def identify(
+    file: UploadFile = File(...),
+    x_gemini_key: str | None = Header(default=None),
+):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
+
+    # Use visitor's key if provided, otherwise fall back to server key
+    api_key = x_gemini_key or GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No Gemini API key provided. Set one via the 🔑 button.")
+    request_client = genai.Client(api_key=api_key)
 
     image_bytes = await file.read()
 
@@ -145,7 +154,7 @@ async def identify(file: UploadFile = File(...)):
 
     # Call Gemini 2.0 Flash
     try:
-        response = client.models.generate_content(
+        response = request_client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
                 types.Part.from_text(text=IDENTIFY_PROMPT),
