@@ -13,7 +13,7 @@ export interface IdentifyResult {
   exhaust_side: string; // 'left' | 'right' | 'top' | 'bottom' | 'none'
 }
 
-const BACKEND_URL = 'http://localhost:8000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8000';
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>('drawing');
