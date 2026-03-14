@@ -244,11 +244,39 @@ function drawUnderwaterWorld(rc: RC, ctx: CanvasRenderingContext2D, W: number, H
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+function ControlsCard({ isFloating }: { isFloating: boolean }) {
+  const rows = isFloating
+    ? [
+        { key: '← →', action: 'MOVE' },
+        { key: '↑ ↓',  action: 'ALTITUDE' },
+        { key: 'ESC',  action: 'EXIT' },
+      ]
+    : [
+        { key: '← →', action: 'MOVE' },
+        { key: '↑ / SPC', action: 'JUMP' },
+        { key: 'ESC',  action: 'EXIT' },
+      ];
+
+  return (
+    <div className="retro-controls-card">
+      <div className="retro-controls-title">CONTROLS</div>
+      <div className="retro-controls-divider" />
+      {rows.map(({ key, action }) => (
+        <div className="retro-controls-row" key={action}>
+          <span className="retro-key">{key}</span>
+          <span className="retro-action">{action}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: InteractiveCanvasProps) {
   const canvasRef      = useRef<HTMLCanvasElement>(null);
   const sketchImageRef = useRef<{ img: HTMLImageElement; w: number; h: number } | null>(null);
   const worldType      = getWorldType(preset);
   const cfg            = getPresetConfig(preset);
+  const isFloating     = !cfg.hasGround || worldType === 'underwater';
 
   // SVG → Image (preserves aspect ratio)
   useEffect(() => {
@@ -430,11 +458,6 @@ export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: In
 
       updateAndDrawParticles();
 
-      // Hint
-      const hintColor = worldType === 'space' || worldType === 'underwater' ? 'rgba(180,190,210,0.6)' : 'rgba(100,100,100,0.65)';
-      ctx.fillStyle = hintColor; ctx.font = "13px 'Virgil', cursive"; ctx.textAlign = 'center';
-      ctx.fillText(isFloating ? `← → to move  ·  ↑ ↓ for altitude  ·  Esc to exit` : `← → to move  ·  ↑ to jump  ·  Esc to exit`, W / 2, H - 16);
-
       raf = requestAnimationFrame(draw);
     }
 
@@ -446,5 +469,10 @@ export function InteractiveCanvas({ sketchSvg, preset, exhaustSide, onExit }: In
     };
   }, [preset, worldType, cfg, exhaustSide]);
 
-  return <canvas ref={canvasRef} className="interactive-canvas" />;
+  return (
+    <div className="interactive-canvas-wrapper">
+      <canvas ref={canvasRef} className="interactive-canvas" />
+      <ControlsCard isFloating={isFloating} />
+    </div>
+  );
 }

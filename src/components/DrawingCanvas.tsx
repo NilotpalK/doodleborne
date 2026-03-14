@@ -65,7 +65,8 @@ export function DrawingCanvas({ onBringToLife, isLoading, apiKey, onSaveKey }: D
         <button
           className="bring-to-life-btn"
           onClick={handleBringToLife}
-          disabled={isLoading}
+          disabled={isLoading || !apiKey}
+          title={!apiKey ? 'Set a Gemini API key first 🔑' : undefined}
         >
           {isLoading ? '✏️ Thinking...' : '✨ Bring to Life'}
         </button>
